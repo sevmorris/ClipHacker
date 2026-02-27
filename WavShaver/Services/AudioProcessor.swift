@@ -30,7 +30,7 @@ actor AudioProcessor {
                 index += 1
                 group.addTask {
                     try Task.checkCancellation()
-                    await self.onFileStarted?(input.id)
+                    self.onFileStarted?(input.id)
                     return try await self.processOne(input.url, id: input.id, tools: tools)
                 }
             }
@@ -131,97 +131,117 @@ actor AudioProcessor {
     }
 
     private nonisolated func runFFmpeg(exe: String, args: [String]) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let fm = FileManager.default
-            guard fm.fileExists(atPath: exe) else {
-                continuation.resume(throwing: ProcessingError.ffmpegNotFound)
-                return
-            }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: exe) else {
+            throw ProcessingError.ffmpegNotFound
+        }
 
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: exe)
-            process.arguments = args
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: exe)
+        process.arguments = args
 
-            let stderrPipe = Pipe()
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = stderrPipe
+        let stderrPipe = Pipe()
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = stderrPipe
 
-            var stderrData = Data()
-            let readGroup = DispatchGroup()
-            readGroup.enter()
-            DispatchQueue.global(qos: .utility).async {
-                stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                readGroup.leave()
-            }
+        // Box avoids a shared `var` across two closures, satisfying Swift 6 concurrency.
+        // readGroup.wait() in the terminationHandler ensures the write always precedes the read.
+        final class DataBox: @unchecked Sendable { var value = Data() }
+        let box = DataBox()
 
-            process.terminationHandler = { proc in
-                readGroup.wait()
-                let exitCode = proc.terminationStatus
-                let msg = String(data: stderrData, encoding: .utf8) ?? ""
-                if exitCode != 0 {
-                    continuation.resume(throwing: ProcessingError.ffmpegFailed(code: exitCode, message: msg.isEmpty ? "Exit code \(exitCode)" : msg))
-                } else {
-                    continuation.resume(returning: ())
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let readGroup = DispatchGroup()
+                readGroup.enter()
+                DispatchQueue.global(qos: .utility).async {
+                    box.value = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    readGroup.leave()
+                }
+
+                process.terminationHandler = { proc in
+                    readGroup.wait()
+                    if proc.terminationReason == .uncaughtSignal {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    let exitCode = proc.terminationStatus
+                    let msg = String(data: box.value, encoding: .utf8) ?? ""
+                    if exitCode != 0 {
+                        continuation.resume(throwing: ProcessingError.ffmpegFailed(code: exitCode, message: msg.isEmpty ? "Exit code \(exitCode)" : msg))
+                    } else {
+                        continuation.resume(returning: ())
+                    }
+                }
+
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: ProcessingError.ffmpegFailed(code: -1, message: "Failed to launch: \(error.localizedDescription)"))
                 }
             }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: ProcessingError.ffmpegFailed(code: -1, message: "Failed to launch: \(error.localizedDescription)"))
-            }
+        } onCancel: {
+            process.terminate()
         }
     }
 
     private nonisolated func runFFmpegCapture(exe: String, args: [String]) async throws -> String {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
-            let fm = FileManager.default
-            guard fm.fileExists(atPath: exe) else {
-                continuation.resume(throwing: ProcessingError.ffmpegNotFound)
-                return
-            }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: exe) else {
+            throw ProcessingError.ffmpegNotFound
+        }
 
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: exe)
-            process.arguments = args
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: exe)
+        process.arguments = args
 
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
-            var stdoutData = Data()
-            var stderrData = Data()
-            let readGroup = DispatchGroup()
+        final class DataBox: @unchecked Sendable { var value = Data() }
+        let stdoutBox = DataBox()
+        let stderrBox = DataBox()
 
-            readGroup.enter()
-            DispatchQueue.global(qos: .utility).async {
-                stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                readGroup.leave()
-            }
-            readGroup.enter()
-            DispatchQueue.global(qos: .utility).async {
-                stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                readGroup.leave()
-            }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+                let readGroup = DispatchGroup()
 
-            process.terminationHandler = { proc in
-                readGroup.wait()
-                let exitCode = proc.terminationStatus
-                if exitCode != 0 {
-                    let msg = String(data: stderrData, encoding: .utf8) ?? ""
-                    continuation.resume(throwing: ProcessingError.ffmpegFailed(code: exitCode, message: msg.isEmpty ? "Exit code \(exitCode)" : msg))
-                } else {
-                    let output = String(data: stdoutData, encoding: .utf8) ?? ""
-                    continuation.resume(returning: output)
+                readGroup.enter()
+                DispatchQueue.global(qos: .utility).async {
+                    stdoutBox.value = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    readGroup.leave()
+                }
+                readGroup.enter()
+                DispatchQueue.global(qos: .utility).async {
+                    stderrBox.value = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    readGroup.leave()
+                }
+
+                process.terminationHandler = { proc in
+                    readGroup.wait()
+                    if proc.terminationReason == .uncaughtSignal {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    let exitCode = proc.terminationStatus
+                    if exitCode != 0 {
+                        let msg = String(data: stderrBox.value, encoding: .utf8) ?? ""
+                        continuation.resume(throwing: ProcessingError.ffmpegFailed(code: exitCode, message: msg.isEmpty ? "Exit code \(exitCode)" : msg))
+                    } else {
+                        let output = String(data: stdoutBox.value, encoding: .utf8) ?? ""
+                        continuation.resume(returning: output)
+                    }
+                }
+
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: ProcessingError.ffmpegFailed(code: -1, message: "Failed to launch: \(error.localizedDescription)"))
                 }
             }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: ProcessingError.ffmpegFailed(code: -1, message: "Failed to launch: \(error.localizedDescription)"))
-            }
+        } onCancel: {
+            process.terminate()
         }
     }
 

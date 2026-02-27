@@ -62,6 +62,13 @@ final class ContentViewModel {
 
     func process() {
         guard !files.isEmpty else { return }
+
+        if let customPath = settings.outputDirectoryPath,
+           !FileManager.default.isWritableFile(atPath: customPath) {
+            alertMessage = "Output directory is not writable: \(customPath)"
+            return
+        }
+
         isProcessing = true
 
         let currentSettings = settings
@@ -77,8 +84,8 @@ final class ContentViewModel {
         processingTask = Task {
             do {
                 let processor = AudioProcessor(settings: currentSettings) { [weak self] id in
-                    Task { @MainActor in
-                        guard let self else { return }
+                    guard let self else { return }
+                    Task { @MainActor [self] in
                         if let index = self.files.firstIndex(where: { $0.id == id }) {
                             self.files[index].status = .processing
                         }
@@ -154,10 +161,9 @@ final class ContentViewModel {
                 let waveform = try await WaveformGenerator.generate(url: url)
                 if let currentIndex = files.firstIndex(where: { $0.id == id }) {
                     files[currentIndex].outputWaveform = waveform
-                    print("[WavShaver] Output waveform generated for \(url.lastPathComponent): \(waveform.peaks.count) peaks, \(waveform.channelCount) ch")
                 }
             } catch {
-                print("[WavShaver] Output waveform FAILED for \(url.lastPathComponent): \(error)")
+                // Output waveform generation failed — non-critical, processed file is unaffected
             }
         }
     }
