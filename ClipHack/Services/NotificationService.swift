@@ -18,7 +18,7 @@ enum NotificationService {
             }
 
             let content = UNMutableNotificationContent()
-            content.title = "ClipHacker Processing Complete"
+            content.title = "ClipHack Processing Complete"
             content.body = "Successfully processed \(fileCount) file\(fileCount == 1 ? "" : "s")"
             content.sound = .default
 

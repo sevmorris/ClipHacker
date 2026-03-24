@@ -1,6 +1,6 @@
 import Foundation
 
-struct ClipHackerSettings: Codable, Equatable, Sendable {
+struct ClipHackSettings: Codable, Equatable, Sendable {
     enum SampleRate: Int, CaseIterable, Codable, Sendable {
         case s44100 = 44100
         case s48000 = 48000
@@ -22,13 +22,13 @@ struct ClipHackerSettings: Codable, Equatable, Sendable {
     var channel: MonoChannel = .left
     var outputDirectoryPath: String? = nil
 
-    private static let storageKey = "ClipHackerSettings"
+    private static let storageKey = "ClipHackSettings"
 
-    static func load() -> ClipHackerSettings {
+    static func load() -> ClipHackSettings {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let settings = try? JSONDecoder().decode(ClipHackerSettings.self, from: data)
+              let settings = try? JSONDecoder().decode(ClipHackSettings.self, from: data)
         else {
-            return ClipHackerSettings()
+            return ClipHackSettings()
         }
         return settings
     }

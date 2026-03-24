@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ClipHackerApp: App {
+struct ClipHackApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
@@ -13,7 +13,7 @@ struct ClipHackerApp: App {
         }
         .commands {
             CommandGroup(replacing: .help) {
-                Button("ClipHacker Help") {
+                Button("ClipHack Help") {
                     openWindow(id: "help")
                 }
                 .keyboardShortcut("?", modifiers: .command)
@@ -26,7 +26,7 @@ struct ClipHackerApp: App {
             }
         }
 
-        Window("ClipHacker Help", id: "help") {
+        Window("ClipHack Help", id: "help") {
             HelpView()
         }
         .windowResizability(.contentSize)

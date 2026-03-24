@@ -48,7 +48,7 @@ actor FFmpegManager {
     private func copyToTemp() throws -> Paths {
         let fm = FileManager.default
         let tempBase = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("ClipHacker/bin", isDirectory: true)
+            .appendingPathComponent("ClipHack/bin", isDirectory: true)
 
         try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
 

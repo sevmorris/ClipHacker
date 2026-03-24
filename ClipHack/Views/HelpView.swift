@@ -31,7 +31,7 @@ struct HelpView: View {
                     }
                 }
                 section("Processing Pipeline") {
-                    text("ClipHacker uses FFmpeg. Each stage is optional except the final limiter:")
+                    text("ClipHack uses FFmpeg. Each stage is optional except the final limiter:")
                     numberedList([
                         "Resample to target sample rate (skipped if already matching).",
                         "Noise Reduction — RNNoise neural network model (arnndn). Removes broadband background noise. Applied per-channel on stereo files.",
@@ -99,7 +99,7 @@ struct HelpView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("ClipHacker Help")
+            Text("ClipHack Help")
                 .font(.largeTitle.bold())
             Text("Clip Prep for macOS")
                 .font(.title3)

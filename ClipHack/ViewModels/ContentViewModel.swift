@@ -7,7 +7,7 @@ import SwiftUI
 final class ContentViewModel {
     var files: [FileItem] = []
     var selectedFileIDs: Set<UUID> = []
-    var settings: ClipHackerSettings {
+    var settings: ClipHackSettings {
         didSet { settings.save() }
     }
     var isProcessing = false
@@ -19,7 +19,7 @@ final class ContentViewModel {
     ]
 
     init() {
-        self.settings = ClipHackerSettings.load()
+        self.settings = ClipHackSettings.load()
     }
 
     func addFiles(_ urls: [URL]) {

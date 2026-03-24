@@ -14,10 +14,10 @@ struct JobInput: Sendable {
 }
 
 actor AudioProcessor {
-    let settings: ClipHackerSettings
+    let settings: ClipHackSettings
     let onFileStarted: (@Sendable (UUID) -> Void)?
 
-    init(settings: ClipHackerSettings, onFileStarted: (@Sendable (UUID) -> Void)? = nil) {
+    init(settings: ClipHackSettings, onFileStarted: (@Sendable (UUID) -> Void)? = nil) {
         self.settings = settings
         self.onFileStarted = onFileStarted
     }
@@ -413,7 +413,7 @@ actor AudioProcessor {
         let here = input.deletingLastPathComponent()
         if fm.isWritableFile(atPath: here.path) { return here }
 
-        let music = fm.homeDirectoryForCurrentUser.appendingPathComponent("Music/ClipHacker", isDirectory: true)
+        let music = fm.homeDirectoryForCurrentUser.appendingPathComponent("Music/ClipHack", isDirectory: true)
         if (try? fm.createDirectory(at: music, withIntermediateDirectories: true)) != nil {
             return music
         }

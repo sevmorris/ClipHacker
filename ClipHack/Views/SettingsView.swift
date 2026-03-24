@@ -9,8 +9,8 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 row("Sample Rate") {
                     Picker("", selection: $viewModel.settings.sampleRate) {
-                        Text("44.1 kHz").tag(ClipHackerSettings.SampleRate.s44100)
-                        Text("48 kHz").tag(ClipHackerSettings.SampleRate.s48000)
+                        Text("44.1 kHz").tag(ClipHackSettings.SampleRate.s44100)
+                        Text("48 kHz").tag(ClipHackSettings.SampleRate.s48000)
                     }
                     .pickerStyle(.segmented)
                 }
@@ -23,8 +23,8 @@ struct SettingsView: View {
 
                 row("Channel") {
                     Picker("", selection: $viewModel.settings.channel) {
-                        Text("Left").tag(ClipHackerSettings.MonoChannel.left)
-                        Text("Right").tag(ClipHackerSettings.MonoChannel.right)
+                        Text("Left").tag(ClipHackSettings.MonoChannel.left)
+                        Text("Right").tag(ClipHackSettings.MonoChannel.right)
                     }
                     .pickerStyle(.segmented)
                 }

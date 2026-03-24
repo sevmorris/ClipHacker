@@ -30,7 +30,7 @@ actor UpdateChecker {
     }
 
     func check() async -> Result {
-        guard let apiURL = URL(string: "https://api.github.com/repos/sevmorris/ClipHacker/releases/latest") else {
+        guard let apiURL = URL(string: "https://api.github.com/repos/sevmorris/ClipHack/releases/latest") else {
             return .error("Invalid update URL.")
         }
 
@@ -50,7 +50,7 @@ actor UpdateChecker {
             let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
 
             let releaseURL = URL(string: release.htmlUrl)
-                ?? URL(string: "https://github.com/sevmorris/ClipHacker/releases")!
+                ?? URL(string: "https://github.com/sevmorris/ClipHack/releases")!
             let downloadURL = release.assets.first(where: { $0.name.hasSuffix(".dmg") })
                 .flatMap { URL(string: $0.browserDownloadUrl) }
                 ?? releaseURL
@@ -78,14 +78,14 @@ func checkForUpdates(silent: Bool = false) async {
         guard !silent else { return }
         let alert = NSAlert()
         alert.messageText = "You're up to date"
-        alert.informativeText = "ClipHacker \(version) is the latest version."
+        alert.informativeText = "ClipHack \(version) is the latest version."
         alert.addButton(withTitle: "OK")
         alert.runModal()
 
     case .available(let version, let downloadURL, let releaseURL):
         let alert = NSAlert()
         alert.messageText = "Update Available"
-        alert.informativeText = "ClipHacker \(version) is available."
+        alert.informativeText = "ClipHack \(version) is available."
         alert.addButton(withTitle: "Download")
         alert.addButton(withTitle: "Release Notes")
         alert.addButton(withTitle: "Not Now")
