@@ -21,6 +21,16 @@ struct SettingsView: View {
                         .labelsHidden()
                 }
 
+                row("Channel") {
+                    Picker("", selection: $viewModel.settings.channel) {
+                        Text("Left").tag(ClipHackerSettings.MonoChannel.left)
+                        Text("Right").tag(ClipHackerSettings.MonoChannel.right)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .disabled(viewModel.settings.stereoOutput)
+                .opacity(viewModel.settings.stereoOutput ? 0.4 : 1)
+
                 Divider().padding(.vertical, 6)
 
                 row("Ceiling") {

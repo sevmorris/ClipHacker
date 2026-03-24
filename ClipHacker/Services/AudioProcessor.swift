@@ -90,7 +90,7 @@ actor AudioProcessor {
         let probeFields = probeOutput.split(separator: ",")
         let inputSampleRate = probeFields.count >= 2 ? Int(probeFields[0]) ?? sr : sr
         let channels = probeFields.count >= 2 ? Int(probeFields[1]) ?? 2 : 2
-        let outputChannels = settings.stereoOutput ? max(2, channels) : channels
+        let outputChannels = settings.stereoOutput ? max(2, channels) : 1
 
         // Stage 1: Resample to target sample rate (skip if already matching)
         var currentURL: URL
@@ -99,7 +99,7 @@ actor AudioProcessor {
             try await runFFmpeg(exe: tools.ffmpeg, args: [
                 "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                 "-i", input.path, "-af", "aresample=\(sr)",
-                "-c:a", "pcm_s24le", "-ar", "\(sr)", "-ac", "\(outputChannels)", midURL.path
+                "-c:a", "pcm_s24le", "-ar", "\(sr)", midURL.path
             ])
             currentURL = midURL
         } else {
@@ -136,7 +136,21 @@ actor AudioProcessor {
 
         try Task.checkCancellation()
 
-        // Stage 2: Leveling (optional)
+        // Stage 2: Channel extraction — pan stereo to mono when not in stereo mode
+        if !settings.stereoOutput && channels > 1 {
+            let chanURL = work.appendingPathComponent("\(stem)_ch.wav")
+            let pan = settings.channel == .left ? "pan=1c|c0=c0" : "pan=1c|c0=c1"
+            try await runFFmpeg(exe: tools.ffmpeg, args: [
+                "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                "-i", currentURL.path, "-af", pan,
+                "-c:a", "pcm_s24le", "-ar", "\(sr)", "-ac", "1", chanURL.path
+            ])
+            currentURL = chanURL
+        }
+
+        try Task.checkCancellation()
+
+        // Stage 3: Leveling (optional)
         if settings.levelingEnabled {
             let leveledURL = work.appendingPathComponent("\(stem)_leveled.wav")
             try await runFFmpeg(exe: tools.ffmpeg, args: [
@@ -149,7 +163,7 @@ actor AudioProcessor {
 
         try Task.checkCancellation()
 
-        // Stage 3: Loudness normalization (optional, two-pass EBU R128)
+        // Stage 4: Loudness normalization (optional, two-pass EBU R128)
         if settings.loudnormEnabled {
             let target = settings.loudnormTarget
             let tp = settings.limitDb
@@ -172,7 +186,7 @@ actor AudioProcessor {
 
         try Task.checkCancellation()
 
-        // Stage 4: Brick-wall limiter with 2x oversampling
+        // Stage 5: Brick-wall limiter with 2x oversampling
         let oversampleSr = sr * 2
         let limiterAf = [
             "aresample=\(oversampleSr)",

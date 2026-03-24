@@ -6,6 +6,11 @@ struct ClipHackerSettings: Codable, Equatable, Sendable {
         case s48000 = 48000
     }
 
+    enum MonoChannel: String, CaseIterable, Codable, Sendable {
+        case left
+        case right
+    }
+
     var sampleRate: SampleRate = .s44100
     var limitDb: Double = -1.0
     var noiseReductionEnabled: Bool = false
@@ -14,6 +19,7 @@ struct ClipHackerSettings: Codable, Equatable, Sendable {
     var loudnormEnabled: Bool = false
     var loudnormTarget: Double = -16.0
     var stereoOutput: Bool = false
+    var channel: MonoChannel = .left
     var outputDirectoryPath: String? = nil
 
     private static let storageKey = "ClipHackerSettings"
